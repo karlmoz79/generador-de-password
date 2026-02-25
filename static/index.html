@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MyPass - Centro de Comando</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <!-- Use Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background: linear-gradient(135deg, #e0f2f1 0%, #f1f5f9 100%);
+        min-height: 100vh;
+      }
+      .dark body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+      .glass-card {
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+      }
+      .dark .glass-card {
+            background: rgba(30, 41, 59, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+  </head>
+  <body
+    class="text-slate-800 dark:text-slate-200 antialiased p-6 md:p-8 lg:p-12 relative flex flex-col items-center transition-colors duration-300"
+  >
+    <!-- Header -->
+    <div class="w-full max-w-7xl flex justify-between items-center mb-8">
+      <div class="flex items-center gap-3">
+        <div
+          class="w-12 h-12 bg-white dark:bg-slate-800 rounded-xl shadow-sm flex items-center justify-center text-emerald-500"
+        >
+          <i class="ph-fill ph-lock-key text-2xl"></i>
+        </div>
+        <div>
+          <h1
+            class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white leading-none"
+          >
+            MyPass
+          </h1>
+          <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider">
+            CENTRO DE COMANDO
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <button
+          id="notification-btn"
+          class="w-10 h-10 bg-white dark:bg-slate-800 rounded-full shadow-sm flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors relative"
+        >
+          <i class="ph ph-bell text-lg"></i>
+          <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+        <button
+          id="dark-mode-btn"
+          class="w-10 h-10 bg-white dark:bg-slate-800 rounded-full shadow-sm flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+        >
+          <i id="dark-mode-icon" class="ph ph-moon text-lg"></i>
+        </button>
+        <button
+          id="vault-toggle-btn"
+          class="px-5 h-10 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 text-white hover:bg-emerald-600 transition-all font-bold text-sm"
+        >
+          <i class="ph ph-shield-check text-lg"></i>
+          Admin Vault
+        </button>
+        <div
+          class="w-10 h-10 bg-slate-900 dark:bg-slate-100 rounded-full shadow-sm flex items-center justify-center text-white dark:text-slate-900 font-bold text-sm"
+        >
+          KM
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div
+      class="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
+    >
+      <!-- Left Panel: Form -->
+      <div
+        class="lg:col-span-5 glass-card rounded-[2rem] p-8 md:p-10 w-full relative overflow-hidden"
+      >
+        <h2 class="text-xl font-bold mb-8 flex items-center gap-2 dark:text-white">
+          <i class="ph-fill ph-plus-circle text-emerald-500"></i>
+          Nueva Credencial
+        </h2>
+
+        <!-- Feedback Message -->
+        <div
+          id="feedback-msg"
+          class="hidden mb-6 p-4 rounded-xl text-sm font-medium transition-all"
+        ></div>
+
+        <form id="vault-form" class="space-y-6">
+          <!-- Website Input -->
+          <div class="space-y-2">
+            <label
+              class="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-wider uppercase"
+              >Sitio Web</label
+            >
+            <div class="flex gap-3">
+              <div class="relative flex-1">
+                <div
+                  class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400"
+                >
+                  <i class="ph ph-globe"></i>
+                </div>
+                <input
+                  type="text"
+                  id="website"
+                  placeholder="Ej. Amazon"
+                  class="w-full pl-11 pr-4 py-3.5 bg-white/60 dark:bg-slate-800/60 border border-white dark:border-slate-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 rounded-2xl outline-none transition-all placeholder-slate-400 font-medium"
+                />
+              </div>
+              <button
+                type="button"
+                id="search-btn"
+                class="w-14 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-white dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              >
+                <i class="ph ph-magnifying-glass text-xl"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Email Input -->
+          <div class="space-y-2">
+            <label
+              class="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-wider uppercase"
+              >Correo / Usuario</label
+            >
+            <div class="relative">
+              <div
+                class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400"
+              >
+                <i class="ph ph-user"></i>
+              </div>
+              <input
+                type="text"
+                id="email"
+                value="karlmoz92@gmail.com"
+                class="w-full pl-11 pr-4 py-3.5 bg-white/60 dark:bg-slate-800/60 border border-white dark:border-slate-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 rounded-2xl outline-none transition-all placeholder-slate-400 font-medium"
+              />
+            </div>
+          </div>
+
+          <!-- Password Input -->
+          <div class="space-y-2">
+            <label
+              class="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-wider uppercase"
+              >Contraseña</label
+            >
+            <div class="flex gap-3">
+              <div class="relative flex-1">
+                <div
+                  class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400"
+                >
+                  <i class="ph ph-lock"></i>
+                </div>
+                <input
+                  type="password"
+                  id="password"
+                  placeholder=""
+                  autocomplete="new-password"
+                  class="w-full pl-11 pr-12 py-3.5 bg-white/60 dark:bg-slate-800/60 border border-white dark:border-slate-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 rounded-2xl outline-none transition-all placeholder-slate-400 font-medium font-mono text-lg tracking-widest"
+                />
+                <button
+                  type="button"
+                  id="toggle-password"
+                  class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-emerald-500 transition-colors focus:outline-none"
+                >
+                  <i id="toggle-password-icon" class="ph ph-eye text-lg"></i>
+                </button>
+              </div>
+              <button
+                type="button"
+                id="generate-btn"
+                class="px-5 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-white dark:border-slate-700 flex items-center justify-center gap-2 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              >
+                <i class="ph ph-arrows-clockwise text-lg"></i>
+                Generar
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-4">
+            <button
+              type="submit"
+              id="add-btn"
+              class="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30 transition-all active:scale-[0.98] outline-none focus:ring-4 focus:ring-emerald-200"
+            >
+              <i class="ph-fill ph-floppy-disk text-xl"></i>
+              Guardar Contraseña
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Right Panel: Insights & Events (Visual Only) -->
+      <div class="lg:col-span-7 flex flex-col gap-8">
+        <!-- Security Insights -->
+        <div class="glass-card rounded-[2rem] p-8 w-full">
+          <div class="flex justify-between items-center mb-8">
+            <h2 class="text-xl font-bold flex items-center gap-2 dark:text-white">
+              <i class="ph-fill ph-chart-bar text-orange-400"></i>
+              Estadísticas de Seguridad
+            </h2>
+            <span
+              class="text-xs font-bold text-orange-500 bg-orange-100 dark:bg-orange-500/20 px-3 py-1 rounded-full uppercase tracking-wider"
+              >Acción Requerida</span
+            >
+          </div>
+
+          <div class="flex flex-col md:flex-row items-center gap-10">
+            <!-- Circle Chart -->
+            <div class="relative w-36 h-36 flex-shrink-0">
+              <svg
+                class="w-full h-full transform -rotate-90"
+                viewBox="0 0 36 36"
+              >
+                <path
+                  class="text-slate-200 dark:text-slate-700"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="4"
+                  stroke-dasharray="100, 100"
+                />
+                <path
+                  id="score-circle"
+                  class="text-emerald-500 transition-all duration-1000"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="4"
+                  stroke-dasharray="0, 100"
+                />
+              </svg>
+              <div
+                class="absolute inset-0 flex flex-col items-center justify-center"
+              >
+                <span id="score-value" class="text-3xl font-bold text-slate-800 dark:text-white"
+                  >0%</span
+                >
+                <span
+                  class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-widest mt-1"
+                  >Puntuación</span
+                >
+              </div>
+            </div>
+
+            <!-- Bars -->
+            <div class="flex-1 w-full space-y-5">
+              <div class="space-y-2">
+                <div class="flex justify-between text-sm font-semibold">
+                  <span class="text-slate-600 dark:text-slate-400">Contraseñas Fuertes</span>
+                  <span id="strong-count" class="text-emerald-600 dark:text-emerald-400">0</span>
+                </div>
+                <div
+                  class="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"
+                >
+                  <div
+                    id="strong-bar"
+                    class="h-full bg-emerald-500 rounded-full transition-all duration-1000"
+                    style="width: 0%"
+                  ></div>
+                </div>
+              </div>
+              <div class="space-y-2">
+                <div class="flex justify-between text-sm font-semibold">
+                  <span class="text-slate-600 dark:text-slate-400">Contraseñas Reutilizadas</span>
+                  <span id="reused-count" class="text-orange-500 dark:text-orange-400">0</span>
+                </div>
+                <div
+                  class="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"
+                >
+                  <div
+                    id="reused-bar"
+                    class="h-full bg-orange-400 rounded-full transition-all duration-1000"
+                    style="width: 0%"
+                  ></div>
+                </div>
+              </div>
+              <div class="space-y-2">
+                <div class="flex justify-between text-sm font-semibold">
+                  <span class="text-slate-600 dark:text-slate-400">Vulnerabilidades</span>
+                  <span id="breached-count" class="text-red-500 dark:text-red-400">0</span>
+                </div>
+                <div
+                  class="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"
+                >
+                  <div
+                    id="breached-bar"
+                    class="h-full bg-red-500 rounded-full transition-all duration-1000"
+                    style="width: 0%"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Events -->
+        <div class="glass-card rounded-[2rem] p-8 w-full flex-1 flex flex-col">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold flex items-center gap-2 dark:text-white">
+              <i class="ph-fill ph-clock-counter-clockwise text-blue-500"></i>
+              Eventos Recientes
+            </h2>
+            <a
+              href="#"
+              class="text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 transition-colors"
+              >Ver Todo</a
+            >
+          </div>
+
+          <div id="events-container" class="space-y-4 flex-1 overflow-y-auto max-h-[300px] scrollbar-hide">
+            <div class="flex justify-center items-center h-full text-slate-400 text-sm">
+                Cargando eventos...
+            </div>
+          </div>
+        </div>
+    <!-- Vault Overlay (Hidden by default) -->
+    <div id="vault-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] p-8 md:p-10 flex flex-col shadow-2xl relative">
+            <button id="close-vault" class="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-slate-500">
+                <i class="ph ph-x text-2xl"></i>
+            </button>
+            
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                    <i class="ph-fill ph-shield-check text-3xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold dark:text-white">Admin Vault</h2>
+                    <p class="text-slate-500 dark:text-slate-400 font-medium">Gestiona tus credenciales guardadas</p>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto mb-6 pr-2 scrollbar-hide">
+                <table class="w-full text-left border-separate border-spacing-y-3">
+                    <thead>
+                        <tr class="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                            <th class="px-6 py-2">Sitio Web</th>
+                            <th class="px-6 py-2">Correo / Usuario</th>
+                            <th class="px-6 py-2">Contraseña</th>
+                            <th class="px-6 py-2 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vault-table-body">
+                        <!-- Content loaded by JS -->
+                    </tbody>
+                </table>
+                <div id="vault-empty-state" class="hidden flex flex-col items-center justify-center py-20 text-slate-400">
+                    <i class="ph ph-keyhole text-6xl mb-4 opacity-20"></i>
+                    <p class="font-medium">Tu bóveda está vacía</p>
+                </div>
+            </div>
+
+            <div class="pt-6 border-t border-slate-100 dark:border-white/5 flex justify-between items-center">
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    <span id="vault-count">0</span> CREDENCIALES EN TOTAL
+                </div>
+                <button id="refresh-vault" class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm hover:underline">
+                    <i class="ph ph-arrows-clockwise"></i>
+                    Actualizar Lista
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+  </body>
+</html>

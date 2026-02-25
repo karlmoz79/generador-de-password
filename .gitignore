@@ -1,0 +1,22 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Data and Secrets (Sensitive)
+data.json
+events.json
+.env
+
+# Logs and Temporary files
+*.log
+startup_log.txt
+
+# Project specific
+archive/
