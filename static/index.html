@@ -385,6 +385,43 @@
             </div>
         </div>
     </div>
+    
+    <!-- Auth Overlay (Hidden by default) -->
+    <div id="auth-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-md rounded-[2rem] p-8 md:p-10 flex flex-col shadow-2xl relative">
+            <button id="close-auth" class="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-slate-500">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+            <div class="flex flex-col items-center text-center mb-6">
+                <div class="w-16 h-16 bg-red-50 dark:bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 mb-4">
+                    <i class="ph-fill ph-lock-key text-4xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold dark:text-white">Acceso Restringido</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mt-2">Introduce la contraseña de administrador para acceder a la bóveda.</p>
+            </div>
+            <form id="auth-form" class="space-y-4">
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                        <i class="ph ph-lock"></i>
+                    </div>
+                    <input
+                        type="password"
+                        id="admin-password"
+                        autocomplete="current-password"
+                        placeholder="Contraseña Maestra"
+                        class="w-full pl-11 pr-4 py-3.5 bg-white/60 dark:bg-slate-800/60 border border-white dark:border-slate-700 focus:border-red-400 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 rounded-2xl outline-none transition-all placeholder-slate-400 font-medium"
+                    />
+                </div>
+                <div id="auth-error" class="hidden text-red-500 text-xs font-bold text-center">Contraseña incorrecta</div>
+                <button
+                    type="submit"
+                    class="w-full bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white py-4 rounded-2xl font-bold transition-all active:scale-[0.98] outline-none"
+                >
+                    Desbloquear Bóveda
+                </button>
+            </form>
+        </div>
+    </div>
 
     <script src="/static/script.js"></script>
   </body>

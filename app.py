@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -6,6 +6,11 @@ from random import randint, choice, shuffle
 import json
 import os
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
+
+EXPECTED_PASSWORD = os.getenv("ADMIN_VAULT_PASSWORD", "supersecret123")
 
 app = FastAPI()
 
@@ -141,7 +146,10 @@ def get_events():
     return load_events()
 
 @app.get("/api/passwords")
-def list_passwords():
+def list_passwords(authorization: str | None = Header(default=None)):
+    if authorization != f"Bearer {EXPECTED_PASSWORD}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
     data = load_data()
     # Return as list of objects for easier frontend handling
     return [

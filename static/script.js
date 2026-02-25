@@ -176,10 +176,51 @@ document.addEventListener("DOMContentLoaded", () => {
     const vaultEmptyState = document.getElementById("vault-empty-state");
     const vaultCount = document.getElementById("vault-count");
 
+    // Vault Auth Elements
+    const authOverlay = document.getElementById("auth-overlay");
+    const closeAuthBtn = document.getElementById("close-auth");
+    const authForm = document.getElementById("auth-form");
+    const adminPasswordInput = document.getElementById("admin-password");
+    const authError = document.getElementById("auth-error");
+
+    let masterPasswordToken = "";
+
     // Vault Toggle
     vaultToggleBtn.addEventListener("click", () => {
-        vaultOverlay.classList.remove("hidden");
-        loadVault();
+        authOverlay.classList.remove("hidden");
+        adminPasswordInput.value = "";
+        authError.classList.add("hidden");
+        adminPasswordInput.focus();
+    });
+
+    closeAuthBtn.addEventListener("click", () => {
+        authOverlay.classList.add("hidden");
+    });
+    
+    // Auth Form Submission
+    authForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const pwd = adminPasswordInput.value;
+        
+        try {
+            // Store token
+            masterPasswordToken = `Bearer ${pwd}`;
+            
+            // Try to load vault
+            const success = await loadVault();
+            
+            if (success) {
+                authOverlay.classList.add("hidden");
+                vaultOverlay.classList.remove("hidden");
+            } else {
+                authError.classList.remove("hidden");
+                adminPasswordInput.value = "";
+                adminPasswordInput.focus();
+                masterPasswordToken = "";
+            }
+        } catch (err) {
+            authError.classList.remove("hidden");
+        }
     });
 
     closeVaultBtn.addEventListener("click", () => {
@@ -195,7 +236,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function loadVault() {
         try {
-            const res = await fetch("/api/passwords");
+            const res = await fetch("/api/passwords", {
+                headers: {
+                    "Authorization": masterPasswordToken
+                }
+            });
+            
+            if (!res.ok) {
+                if(res.status === 401) {
+                    return false; // Auth failed
+                }
+                throw new Error("Failed to load");
+            }
+            
             const passwords = await res.json();
             
             vaultCount.textContent = passwords.length;
@@ -265,8 +318,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 vaultTableBody.appendChild(tr);
             });
+            return true; // Auth succeeded and vault loaded
         } catch (error) {
             console.error("Error loading vault:", error);
+            return false;
         }
     }
 
