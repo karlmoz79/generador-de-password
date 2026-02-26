@@ -200,6 +200,47 @@
             </div>
           </div>
 
+          <!-- Generator Controls -->
+          <div id="generator-controls" class="mt-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl space-y-4">
+              <div class="space-y-2">
+                  <div class="flex justify-between text-sm font-semibold">
+                      <span class="text-slate-600 dark:text-slate-400">Longitud: <span id="length-value">16</span></span>
+                  </div>
+                  <input type="range" id="password-length" min="8" max="64" value="16" 
+                      class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full appearance-none cursor-pointer">
+              </div>
+              
+              <div class="grid grid-cols-2 gap-3">
+                  <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                      <input type="checkbox" id="opt-uppercase" checked class="w-4 h-4 rounded text-emerald-500">
+                      <span class="text-slate-600 dark:text-slate-400">Mayúsculas</span>
+                  </label>
+                  <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                      <input type="checkbox" id="opt-lowercase" checked class="w-4 h-4 rounded text-emerald-500">
+                      <span class="text-slate-600 dark:text-slate-400">Minúsculas</span>
+                  </label>
+                  <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                      <input type="checkbox" id="opt-numbers" checked class="w-4 h-4 rounded text-emerald-500">
+                      <span class="text-slate-600 dark:text-slate-400">Números</span>
+                  </label>
+                  <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                      <input type="checkbox" id="opt-symbols" checked class="w-4 h-4 rounded text-emerald-500">
+                      <span class="text-slate-600 dark:text-slate-400">Símbolos</span>
+                  </label>
+              </div>
+              
+              <!-- Strength Indicator -->
+              <div id="strength-indicator" class="hidden">
+                  <div class="flex items-center gap-2 mb-1">
+                      <span class="text-xs font-bold uppercase tracking-wider">Fortaleza:</span>
+                      <span id="strength-text" class="text-sm font-bold"></span>
+                  </div>
+                  <div class="h-1.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div id="strength-bar" class="h-full rounded-full transition-all" style="width: 0%"></div>
+                  </div>
+              </div>
+          </div>
+
           <div class="pt-4">
             <button
               type="submit"

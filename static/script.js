@@ -389,31 +389,78 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Generate Password
     generateBtn.addEventListener("click", async () => {
+        const length = document.getElementById("password-length").value;
+        const uppercase = document.getElementById("opt-uppercase").checked;
+        const lowercase = document.getElementById("opt-lowercase").checked;
+        const numbers = document.getElementById("opt-numbers").checked;
+        const symbols = document.getElementById("opt-symbols").checked;
+        
         try {
-            const res = await fetch("/api/generate");
+            const params = new URLSearchParams({
+                length,
+                uppercase,
+                lowercase,
+                numbers,
+                symbols
+            });
+            const res = await fetch(`/api/generate?${params}`);
             const data = await res.json();
             
             passwordInput.value = data.password;
-            passwordInput.type = "text"; 
-            if (togglePasswordIcon) {
-                togglePasswordIcon.classList.remove("ph-eye");
-                togglePasswordIcon.classList.add("ph-eye-slash");
-            }
+            passwordInput.type = "text";
             
-            // Copy to clipboard
+            // Update strength indicator
+            updateStrengthIndicator(data.password);
+            
             await navigator.clipboard.writeText(data.password);
             showMessage("¡Contraseña generada y copiada al portapapeles!", "success");
             
             setTimeout(() => {
                 passwordInput.type = "password";
-                if (togglePasswordIcon) {
-                    togglePasswordIcon.classList.remove("ph-eye-slash");
-                    togglePasswordIcon.classList.add("ph-eye");
-                }
             }, 5000);
         } catch (error) {
             showMessage("Error generando contraseña.", "error");
         }
+    });
+
+    function updateStrengthIndicator(password) {
+        const indicator = document.getElementById("strength-indicator");
+        const text = document.getElementById("strength-text");
+        const bar = document.getElementById("strength-bar");
+        
+        indicator.classList.remove("hidden");
+        
+        let score = 0;
+        if (password.length >= 8) score++;
+        if (password.length >= 12) score++;
+        if (password.length >= 16) score++;
+        if (/[A-Z]/.test(password)) score++;
+        if (/[a-z]/.test(password)) score++;
+        if (/[0-9]/.test(password)) score++;
+        if (/[^A-Za-z0-9]/.test(password)) score++;
+        
+        let strength = "débil";
+        let color = "bg-red-500";
+        let width = "14%";
+        
+        if (score >= 5) {
+            strength = "fuerte";
+            color = "bg-emerald-500";
+            width = "100%";
+        } else if (score >= 3) {
+            strength = "media";
+            color = "bg-orange-500";
+            width = "57%";
+        }
+        
+        text.textContent = strength;
+        text.className = `text-sm font-bold ${color.replace('bg-', 'text-')}`;
+        bar.className = `h-full rounded-full transition-all ${color}`;
+        bar.style.width = width;
+    }
+
+    document.getElementById("password-length").addEventListener("input", (e) => {
+        document.getElementById("length-value").textContent = e.target.value;
     });
 
     // Add/Save Password
