@@ -8,10 +8,13 @@ import json
 import os
 import hashlib
 import httpx
-import hashlib
-import httpx
+import time
+import logging
 from datetime import datetime
 from dotenv import load_dotenv
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -270,8 +273,12 @@ def check_breach(website: str):
                 hash_suffix, count = h.split(":")
                 if hash_suffix == suffix:
                     return {"website": website, "breached": True, "count": int(count)}
-    except Exception:
-        pass
+        else:
+            logger.warning(
+                f"HIBP API returned status {response.status_code} for {website}"
+            )
+    except Exception as e:
+        logger.error(f"Error checking breach for {website}: {e}")
 
     return {"website": website, "breached": False, "count": 0}
 
@@ -307,7 +314,15 @@ def check_all_breaches(authorization: str | None = Header(default=None)):
                 results.append(
                     {"website": website, "breached": breached, "count": count}
                 )
-        except Exception:
+            else:
+                logger.warning(
+                    f"HIBP API returned status {response.status_code} for {website}"
+                )
+                results.append({"website": website, "breached": None, "count": 0})
+        except Exception as e:
+            logger.error(f"Error checking breach for {website}: {e}")
             results.append({"website": website, "breached": None, "count": 0})
+
+        time.sleep(0.5)
 
     return results
