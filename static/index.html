@@ -419,10 +419,20 @@
                 <div class="text-xs font-bold text-slate-400 uppercase tracking-widest">
                     <span id="vault-count">0</span> CREDENCIALES EN TOTAL
                 </div>
-                <button id="refresh-vault" class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm hover:underline">
-                    <i class="ph ph-arrows-clockwise"></i>
-                    Actualizar Lista
-                </button>
+                <div class="flex items-center gap-3">
+                    <button id="import-vault" class="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-sm hover:underline">
+                        <i class="ph ph-download-simple"></i>
+                        Importar
+                    </button>
+                    <button id="export-vault" class="flex items-center gap-2 text-orange-600 dark:text-orange-400 font-bold text-sm hover:underline">
+                        <i class="ph ph-upload-simple"></i>
+                        Exportar
+                    </button>
+                    <button id="refresh-vault" class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm hover:underline">
+                        <i class="ph ph-arrows-clockwise"></i>
+                        Actualizar Lista
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -461,6 +471,85 @@
                     Desbloquear Bóveda
                 </button>
             </form>
+        </div>
+    </div>
+
+    <!-- Import Modal (Hidden by default) -->
+    <div id="import-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-lg rounded-[2rem] p-8 md:p-10 flex flex-col shadow-2xl relative">
+            <button id="close-import" class="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-slate-500">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+            <div class="flex flex-col items-center text-center mb-6">
+                <div class="w-16 h-16 bg-blue-50 dark:bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 mb-4">
+                    <i class="ph-fill ph-download-simple text-4xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold dark:text-white">Importar Credenciales</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mt-2">Sube un archivo CSV o JSON con tus credenciales.</p>
+            </div>
+            <div id="import-dropzone" class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">
+                <i class="ph ph-file-arrow-up text-4xl text-slate-400 mb-2"></i>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Arrastra un archivo aquí o haz clic para seleccionar</p>
+                <p class="text-xs text-slate-400 mt-1">Formatos aceptados: .csv, .json</p>
+                <input type="file" id="import-file" class="hidden" accept=".csv,.json">
+            </div>
+            <div id="import-preview" class="hidden mt-4">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Vista previa (primeros 5)</p>
+                <div class="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 max-h-32 overflow-y-auto">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="text-slate-400">
+                                <th class="text-left py-1">Sitio</th>
+                                <th class="text-left py-1">Email</th>
+                            </tr>
+                        </thead>
+                        <tbody id="import-preview-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="import-options" class="hidden mt-4 space-y-3">
+                <label class="flex items-center gap-3 text-sm font-medium cursor-pointer">
+                    <input type="radio" name="import-action" value="skip" checked class="w-4 h-4 text-blue-500">
+                    <span class="text-slate-600 dark:text-slate-400">Omitir duplicados</span>
+                </label>
+                <label class="flex items-center gap-3 text-sm font-medium cursor-pointer">
+                    <input type="radio" name="import-action" value="overwrite" class="w-4 h-4 text-blue-500">
+                    <span class="text-slate-600 dark:text-slate-400">Sobrescribir existentes</span>
+                </label>
+            </div>
+            <div id="import-error" class="hidden mt-4 text-red-500 text-xs font-bold text-center"></div>
+            <button
+                id="confirm-import"
+                class="hidden w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-2xl font-bold transition-all active:scale-[0.98] outline-none mt-4"
+            >
+                Importar Credenciales
+            </button>
+        </div>
+    </div>
+
+    <!-- Export Modal (Hidden by default) -->
+    <div id="export-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-md rounded-[2rem] p-8 md:p-10 flex flex-col shadow-2xl relative">
+            <button id="close-export" class="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-slate-500">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+            <div class="flex flex-col items-center text-center mb-6">
+                <div class="w-16 h-16 bg-orange-50 dark:bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-500 mb-4">
+                    <i class="ph-fill ph-upload-simple text-4xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold dark:text-white">Exportar Credenciales</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mt-2">Elige el formato de exportación.</p>
+            </div>
+            <div class="space-y-3">
+                <button id="export-json" class="w-full bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 py-4 rounded-2xl font-bold transition-all active:scale-[0.98] outline-none flex items-center justify-center gap-3">
+                    <i class="ph ph-file-json text-2xl"></i>
+                    Exportar como JSON
+                </button>
+                <button id="export-csv" class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white py-4 rounded-2xl font-bold transition-all active:scale-[0.98] outline-none flex items-center justify-center gap-3">
+                    <i class="ph ph-file-csv text-2xl"></i>
+                    Exportar como CSV
+                </button>
+            </div>
         </div>
     </div>
 

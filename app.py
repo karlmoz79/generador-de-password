@@ -203,3 +203,36 @@ def delete_password(website: str):
         "warning",
     )
     return {"message": "Success"}
+
+
+@app.get("/api/export")
+def export_passwords(authorization: str | None = Header(default=None)):
+    if authorization != f"Bearer {EXPECTED_PASSWORD}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    data = load_data()
+    return data
+
+
+@app.post("/api/import")
+def import_passwords(
+    credentials: list[Credential],
+    action: str = "skip",
+    authorization: str | None = Header(default=None),
+):
+    if authorization != f"Bearer {EXPECTED_PASSWORD}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    data = load_data()
+    imported = 0
+    skipped = 0
+
+    for cred in credentials:
+        if cred.website in data and action == "skip":
+            skipped += 1
+            continue
+        data[cred.website] = {"email": cred.email, "password": cred.password}
+        imported += 1
+
+    save_data(data)
+    return {"imported": imported, "skipped": skipped}
