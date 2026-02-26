@@ -4,28 +4,27 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 import string
 import secrets
-import json
-import os
 import hashlib
 import httpx
 import time
 import logging
 from datetime import datetime
-from dotenv import load_dotenv
+
+from src.config import get_settings
+from src.db import (
+    load_all_credentials,
+    get_credential,
+    upsert_credential,
+    delete_credential,
+    update_breach_status,
+    load_events,
+    save_event,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-load_dotenv()
-
-EXPECTED_PASSWORD = os.getenv("ADMIN_VAULT_PASSWORD")
-if not EXPECTED_PASSWORD:
-    raise ValueError("ADMIN_VAULT_PASSWORD environment variable is required")
-
 app = FastAPI()
-
-DATA_FILE = "data.json"
-EVENTS_FILE = "events.json"
 
 # Servir archivos estáticos (HTML, CSS, JS)
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -40,115 +39,116 @@ class Credential(BaseModel):
     website: str = Field(max_length=500)
     email: str = Field(max_length=500)
     password: str = Field(max_length=500)
+    force: bool = False
 
 
-def load_data():
-    if not os.path.exists(DATA_FILE):
-        return {}
-    try:
-        with open(DATA_FILE, "r") as file:
-            return json.load(file)
-    except json.JSONDecodeError:
-        return {}
-
-
-def save_data(data):
-    try:
-        with open(DATA_FILE, "w") as file:
-            json.dump(data, file, indent=4)
-    except IOError as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save data: {str(e)}")
-
-
-def load_events():
-    if not os.path.exists(EVENTS_FILE):
-        return []
-    try:
-        with open(EVENTS_FILE, "r") as file:
-            return json.load(file)
-    except json.JSONDecodeError:
-        return []
-
-
-def save_event(title: str, description: str, type: str):
-    try:
-        events = load_events()
-        event = {
-            "title": title,
-            "description": description,
-            "type": type,
-            "timestamp": datetime.now().isoformat(),
-        }
-        events.insert(0, event)
-        events = events[:10]
-        with open(EVENTS_FILE, "w") as file:
-            json.dump(events, file, indent=4)
-    except IOError as e:
-        pass  # Log event failure shouldn't break main operations
+def _verify_auth(authorization: str | None) -> None:
+    """Verifica el header Authorization contra la master password en memoria."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    provided_token = authorization.split(" ")[1]
+    expected = get_settings().admin_password
+    if not expected or not secrets.compare_digest(provided_token, expected):
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 @app.get("/api/password/{website}")
-def get_password(website: str):
-    data = load_data()
-    if website not in data:
-        raise HTTPException(status_code=404, detail="No details for the website exist")
+def get_password(website: str, authorization: str | None = Header(default=None)):
+    _verify_auth(authorization)
 
-    save_event("Búsqueda Existosa", f"Credenciales consultadas para {website}", "login")
-    return {"email": data[website]["email"], "password": data[website]["password"]}
+    cred = get_credential(website)
+    if cred is None:
+        raise HTTPException(
+            status_code=404, detail="No details for the website exist"
+        )
+
+    save_event(
+        "Búsqueda Existosa",
+        f"Credenciales consultadas para {website}",
+        "login",
+    )
+    return {"email": cred["email"], "password": cred["password"]}
 
 
 @app.post("/api/password")
-def save_password(cred: Credential):
+def save_password(
+    cred: Credential, authorization: str | None = Header(default=None)
+):
+    _verify_auth(authorization)
+
     if not cred.website or not cred.password:
         raise HTTPException(
             status_code=400, detail="Please don't leave any fields empty!"
         )
 
-    data = load_data()
-    data[cred.website] = {"email": cred.email, "password": cred.password}
-    save_data(data)
-    save_event("Nueva Credencial", f"Contraseña guardada para {cred.website}", "device")
+    # Check for duplicate: same website and same email
+    existing = get_credential(cred.website)
+    if (
+        existing
+        and existing["email"] == cred.email
+        and not cred.force
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Ya existe una contraseña para {cred.website} con el correo {cred.email}. ¿Deseas reemplazarla?",
+        )
+
+    upsert_credential(cred.website, cred.email, cred.password)
+    save_event(
+        "Nueva Credencial",
+        f"Contraseña guardada para {cred.website}",
+        "device",
+    )
     return {"message": "Success"}
 
 
 @app.get("/api/stats")
-def get_stats():
-    data = load_data()
+def get_stats(authorization: str | None = Header(default=None)):
+    _verify_auth(authorization)
+
+    data = load_all_credentials()
     total = len(data)
 
     passwords = [entry["password"] for entry in data.values()]
 
-    # Calculate strong passwords (>8 chars, has letters and numbers)
+    # Calculate strong passwords (>=8 chars, has upper+lower+digit+symbol)
     strong_count = 0
     for pwd in passwords:
-        if (
-            len(pwd) >= 8
-            and any(c.isalpha() for c in pwd)
-            and any(c.isdigit() for c in pwd)
-        ):
+        has_upper = any(c.isupper() for c in pwd)
+        has_lower = any(c.islower() for c in pwd)
+        has_digit = any(c.isdigit() for c in pwd)
+        has_symbol = any(not c.isalnum() for c in pwd)
+        if len(pwd) >= 8 and has_upper and has_lower and has_digit and has_symbol:
             strong_count += 1
 
     # Calculate reused passwords
-    reused_count = 0
-    seen = set()
-    reused_set = set()
+    seen: set[str] = set()
+    reused_set: set[str] = set()
     for pwd in passwords:
         if pwd in seen:
             reused_set.add(pwd)
         seen.add(pwd)
-
-    # Count how many passwords are total reused ones
     reused_count = sum(1 for pwd in passwords if pwd in reused_set)
 
-    score = 0
+    # Calculate breached passwords from persisted state
+    breached_count = sum(
+        1 for entry in data.values() if entry.get("breached") is True
+    )
+
+    # Weighted score: 40% strength + 30% uniqueness + 30% not breached
     if total > 0:
-        score = int((strong_count / total) * 100)
+        strength_pct = (strong_count / total) * 100
+        unique_pct = ((total - reused_count) / total) * 100
+        safe_pct = ((total - breached_count) / total) * 100
+        score = int(strength_pct * 0.4 + unique_pct * 0.3 + safe_pct * 0.3)
+    else:
+        score = 0
 
     return {
         "score": score,
         "strong": strong_count,
         "reused": reused_count,
-        "breached": 0,  # Mocked for now to avoid external API dependencies without request
+        "breached": breached_count,
         "total": total,
     }
 
@@ -162,7 +162,9 @@ def generate_password(
     symbols: bool = True,
 ):
     if length < 4 or length > 128:
-        raise HTTPException(status_code=400, detail="Length must be between 4 and 128")
+        raise HTTPException(
+            status_code=400, detail="Length must be between 4 and 128"
+        )
 
     chars = ""
     if uppercase:
@@ -182,17 +184,16 @@ def generate_password(
 
 
 @app.get("/api/events")
-def get_events():
+def get_events(authorization: str | None = Header(default=None)):
+    _verify_auth(authorization)
     return load_events()
 
 
 @app.get("/api/passwords")
 def list_passwords(authorization: str | None = Header(default=None)):
-    if authorization != f"Bearer {EXPECTED_PASSWORD}":
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    _verify_auth(authorization)
 
-    data = load_data()
-    # Return as list of objects for easier frontend handling
+    data = load_all_credentials()
     return [
         {"website": website, "email": details["email"], "password": details["password"]}
         for website, details in data.items()
@@ -200,13 +201,16 @@ def list_passwords(authorization: str | None = Header(default=None)):
 
 
 @app.delete("/api/password/{website}")
-def delete_password(website: str):
-    data = load_data()
-    if website not in data:
+def delete_password(
+    website: str, authorization: str | None = Header(default=None)
+):
+    _verify_auth(authorization)
+
+    existing = get_credential(website)
+    if existing is None:
         raise HTTPException(status_code=404, detail="Credential not found")
 
-    del data[website]
-    save_data(data)
+    delete_credential(website)
     save_event(
         "Credencial Eliminada",
         f"Se eliminaron las credenciales de {website}",
@@ -217,11 +221,8 @@ def delete_password(website: str):
 
 @app.get("/api/export")
 def export_passwords(authorization: str | None = Header(default=None)):
-    if authorization != f"Bearer {EXPECTED_PASSWORD}":
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    data = load_data()
-    return data
+    _verify_auth(authorization)
+    return load_all_credentials()
 
 
 @app.post("/api/import")
@@ -230,13 +231,12 @@ def import_passwords(
     action: str = "skip",
     authorization: str | None = Header(default=None),
 ):
-    if authorization != f"Bearer {EXPECTED_PASSWORD}":
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    _verify_auth(authorization)
 
     if action not in ("skip", "overwrite"):
         action = "skip"
 
-    data = load_data()
+    data = load_all_credentials()
     imported = 0
     skipped = 0
 
@@ -244,24 +244,29 @@ def import_passwords(
         if cred.website in data and action == "skip":
             skipped += 1
             continue
-        data[cred.website] = {"email": cred.email, "password": cred.password}
+        upsert_credential(cred.website, cred.email, cred.password)
         imported += 1
 
-    save_data(data)
     return {"imported": imported, "skipped": skipped}
 
 
 @app.get("/api/check-breach/{website}")
-def check_breach(website: str):
-    data = load_data()
-    if website not in data:
+def check_breach(
+    website: str, authorization: str | None = Header(default=None)
+):
+    _verify_auth(authorization)
+
+    cred = get_credential(website)
+    if cred is None:
         raise HTTPException(status_code=404, detail="Website not found")
 
-    password = data[website]["password"]
-
+    password = cred["password"]
     sha1_hash = hashlib.sha1(password.encode()).hexdigest().upper()
     prefix = sha1_hash[:5]
     suffix = sha1_hash[5:]
+
+    breached = False
+    count = 0
 
     try:
         response = httpx.get(
@@ -270,9 +275,11 @@ def check_breach(website: str):
         if response.status_code == 200:
             hashes = response.text.splitlines()
             for h in hashes:
-                hash_suffix, count = h.split(":")
+                hash_suffix, c = h.split(":")
                 if hash_suffix == suffix:
-                    return {"website": website, "breached": True, "count": int(count)}
+                    breached = True
+                    count = int(c)
+                    break
         else:
             logger.warning(
                 f"HIBP API returned status {response.status_code} for {website}"
@@ -280,15 +287,17 @@ def check_breach(website: str):
     except Exception as e:
         logger.error(f"Error checking breach for {website}: {e}")
 
-    return {"website": website, "breached": False, "count": 0}
+    # Persist breach state in Supabase
+    update_breach_status(website, breached, count)
+
+    return {"website": website, "breached": breached, "count": count}
 
 
 @app.get("/api/check-all-breaches")
 def check_all_breaches(authorization: str | None = Header(default=None)):
-    if authorization != f"Bearer {EXPECTED_PASSWORD}":
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    _verify_auth(authorization)
 
-    data = load_data()
+    data = load_all_credentials()
     results = []
 
     for website, creds in data.items():
@@ -297,14 +306,15 @@ def check_all_breaches(authorization: str | None = Header(default=None)):
         prefix = sha1_hash[:5]
         suffix = sha1_hash[5:]
 
+        breached = False
+        count = 0
+
         try:
             response = httpx.get(
                 f"https://api.pwnedpasswords.com/range/{prefix}", timeout=5.0
             )
             if response.status_code == 200:
                 hashes = response.text.splitlines()
-                breached = False
-                count = 0
                 for h in hashes:
                     hash_suffix, c = h.split(":")
                     if hash_suffix == suffix:
@@ -318,10 +328,17 @@ def check_all_breaches(authorization: str | None = Header(default=None)):
                 logger.warning(
                     f"HIBP API returned status {response.status_code} for {website}"
                 )
-                results.append({"website": website, "breached": None, "count": 0})
+                results.append(
+                    {"website": website, "breached": None, "count": 0}
+                )
         except Exception as e:
             logger.error(f"Error checking breach for {website}: {e}")
-            results.append({"website": website, "breached": None, "count": 0})
+            results.append(
+                {"website": website, "breached": None, "count": 0}
+            )
+
+        # Persist breach state per entry
+        update_breach_status(website, breached, count)
 
         time.sleep(0.5)
 
