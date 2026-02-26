@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import string
 import secrets
 import json
@@ -30,9 +30,9 @@ def read_root():
 
 
 class Credential(BaseModel):
-    website: str
-    email: str
-    password: str
+    website: str = Field(max_length=500)
+    email: str = Field(max_length=500)
+    password: str = Field(max_length=500)
 
 
 def load_data():
@@ -154,6 +154,9 @@ def generate_password(
     numbers: bool = True,
     symbols: bool = True,
 ):
+    if length < 4 or length > 128:
+        raise HTTPException(status_code=400, detail="Length must be between 4 and 128")
+
     chars = ""
     if uppercase:
         chars += string.ascii_uppercase
@@ -222,6 +225,9 @@ def import_passwords(
 ):
     if authorization != f"Bearer {EXPECTED_PASSWORD}":
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if action not in ("skip", "overwrite"):
+        action = "skip"
 
     data = load_data()
     imported = 0

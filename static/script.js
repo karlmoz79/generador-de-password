@@ -315,7 +315,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 tr.querySelector(".copy-vault-btn").addEventListener("click", async () => {
                     await navigator.clipboard.writeText(p.password);
-                    showMessage(`Contraseña de ${p.website} copiada.`, "success");
+                    showMessage(`Contraseña de ${escapeHtml(p.website)} copiada.`, "success");
                 });
                 
                 tr.querySelector(".delete-vault-btn").addEventListener("click", async () => {
