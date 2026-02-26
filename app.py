@@ -11,7 +11,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-EXPECTED_PASSWORD = os.getenv("ADMIN_VAULT_PASSWORD", "supersecret123")
+EXPECTED_PASSWORD = os.getenv("ADMIN_VAULT_PASSWORD")
+if not EXPECTED_PASSWORD:
+    raise ValueError("ADMIN_VAULT_PASSWORD environment variable is required")
 
 app = FastAPI()
 
@@ -44,8 +46,11 @@ def load_data():
 
 
 def save_data(data):
-    with open(DATA_FILE, "w") as file:
-        json.dump(data, file, indent=4)
+    try:
+        with open(DATA_FILE, "w") as file:
+            json.dump(data, file, indent=4)
+    except IOError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save data: {str(e)}")
 
 
 def load_events():
@@ -59,18 +64,20 @@ def load_events():
 
 
 def save_event(title: str, description: str, type: str):
-    events = load_events()
-    event = {
-        "title": title,
-        "description": description,
-        "type": type,  # login, warning, device
-        "timestamp": datetime.now().isoformat(),
-    }
-    events.insert(0, event)  # Add to beginning
-    # Keep only last 10 events
-    events = events[:10]
-    with open(EVENTS_FILE, "w") as file:
-        json.dump(events, file, indent=4)
+    try:
+        events = load_events()
+        event = {
+            "title": title,
+            "description": description,
+            "type": type,
+            "timestamp": datetime.now().isoformat(),
+        }
+        events.insert(0, event)
+        events = events[:10]
+        with open(EVENTS_FILE, "w") as file:
+            json.dump(events, file, indent=4)
+    except IOError as e:
+        pass  # Log event failure shouldn't break main operations
 
 
 @app.get("/api/password/{website}")
@@ -162,39 +169,6 @@ def generate_password(
 
     password = "".join(secrets.choice(chars) for _ in range(length))
     return {"password": password}
-
-
-def calculate_password_strength(password: str) -> dict:
-    score = 0
-    feedback = []
-
-    if len(password) >= 8:
-        score += 1
-    if len(password) >= 12:
-        score += 1
-    if len(password) >= 16:
-        score += 1
-
-    if any(c.isupper() for c in password):
-        score += 1
-    if any(c.islower() for c in password):
-        score += 1
-    if any(c.isdigit() for c in password):
-        score += 1
-    if any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in password):
-        score += 1
-
-    if password.lower() in ["password", "123456", "qwerty", "admin"]:
-        score = 1
-        feedback.append("Evita contraseñas comunes")
-
-    strength = "débil"
-    if score >= 5:
-        strength = "fuerte"
-    elif score >= 3:
-        strength = "media"
-
-    return {"score": score, "strength": strength, "feedback": feedback}
 
 
 @app.get("/api/events")

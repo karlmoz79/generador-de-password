@@ -1,4 +1,12 @@
 document.addEventListener("DOMContentLoaded", () => {
+    // XSS Prevention - sanitize user input
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     const websiteInput = document.getElementById("website");
     const emailInput = document.getElementById("email");
     const passwordInput = document.getElementById("password");
@@ -148,8 +156,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             <i class="ph-fill ${icon} text-xl"></i>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <h4 class="font-bold text-slate-800 dark:text-white truncate">${ev.title}</h4>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 truncate">${ev.description}</p>
+                            <h4 class="font-bold text-slate-800 dark:text-white truncate">${escapeHtml(ev.title)}</h4>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 truncate">${escapeHtml(ev.description)}</p>
                         </div>
                         <div class="text-[0.65rem] font-bold text-slate-400 tracking-wider">
                             ${timeAgo(ev.timestamp)}
@@ -265,8 +273,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 const tr = document.createElement("tr");
                 tr.className = "bg-white/40 dark:bg-slate-800/40 rounded-2xl transition-all hover:bg-white/60 dark:hover:bg-slate-800/60 group";
                 tr.innerHTML = `
-                    <td class="px-6 py-4 font-bold text-slate-800 dark:text-white rounded-l-2xl">${p.website}</td>
-                    <td class="px-6 py-4 text-slate-500 dark:text-slate-400 font-medium">${p.email}</td>
+                    <td class="px-6 py-4 font-bold text-slate-800 dark:text-white rounded-l-2xl">${escapeHtml(p.website)}</td>
+                    <td class="px-6 py-4 text-slate-500 dark:text-slate-400 font-medium">${escapeHtml(p.email)}</td>
                     <td class="px-6 py-4 text-slate-500 dark:text-slate-400 font-mono text-sm tracking-widest vault-password items-center flex gap-2 w-[180px] h-[72px]">
                         <span class="pwd-text transition-all truncate">••••••••</span>
                     </td>
