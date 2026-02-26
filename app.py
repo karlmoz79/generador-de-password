@@ -6,6 +6,10 @@ import string
 import secrets
 import json
 import os
+import hashlib
+import httpx
+import hashlib
+import httpx
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -242,3 +246,68 @@ def import_passwords(
 
     save_data(data)
     return {"imported": imported, "skipped": skipped}
+
+
+@app.get("/api/check-breach/{website}")
+def check_breach(website: str):
+    data = load_data()
+    if website not in data:
+        raise HTTPException(status_code=404, detail="Website not found")
+
+    password = data[website]["password"]
+
+    sha1_hash = hashlib.sha1(password.encode()).hexdigest().upper()
+    prefix = sha1_hash[:5]
+    suffix = sha1_hash[5:]
+
+    try:
+        response = httpx.get(
+            f"https://api.pwnedpasswords.com/range/{prefix}", timeout=5.0
+        )
+        if response.status_code == 200:
+            hashes = response.text.splitlines()
+            for h in hashes:
+                hash_suffix, count = h.split(":")
+                if hash_suffix == suffix:
+                    return {"website": website, "breached": True, "count": int(count)}
+    except Exception:
+        pass
+
+    return {"website": website, "breached": False, "count": 0}
+
+
+@app.get("/api/check-all-breaches")
+def check_all_breaches(authorization: str | None = Header(default=None)):
+    if authorization != f"Bearer {EXPECTED_PASSWORD}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    data = load_data()
+    results = []
+
+    for website, creds in data.items():
+        password = creds["password"]
+        sha1_hash = hashlib.sha1(password.encode()).hexdigest().upper()
+        prefix = sha1_hash[:5]
+        suffix = sha1_hash[5:]
+
+        try:
+            response = httpx.get(
+                f"https://api.pwnedpasswords.com/range/{prefix}", timeout=5.0
+            )
+            if response.status_code == 200:
+                hashes = response.text.splitlines()
+                breached = False
+                count = 0
+                for h in hashes:
+                    hash_suffix, c = h.split(":")
+                    if hash_suffix == suffix:
+                        breached = True
+                        count = int(c)
+                        break
+                results.append(
+                    {"website": website, "breached": breached, "count": count}
+                )
+        except Exception:
+            results.append({"website": website, "breached": None, "count": 0})
+
+    return results
