@@ -1,18 +1,43 @@
+import os
 import getpass
 import uvicorn
+from dotenv import load_dotenv
 from src.config import set_settings
+import app
 
 
 def start_app():
     print("=== MyPass Portable ===")
-    url = input("Supabase URL: ")
-    key = getpass.getpass("Supabase API Key: ")
-    pwd = getpass.getpass("Master Password: ")
+    
+    # Cargar variables del archivo .env oculto si existe
+    load_dotenv()
+    
+    env_url = os.getenv("SUPABASE_URL")
+    env_key = os.getenv("SUPABASE_KEY")
+    
+    url = env_url.strip() if env_url else ""
+    if url:
+        print("[✓] Supabase URL cargada del .env")
+    else:
+        while not url:
+            url = input("Supabase URL: ").strip()
+            
+    key = env_key.strip() if env_key else ""
+    if key:
+        print("[✓] Supabase API Key cargada del .env")
+    else:
+        while not key:
+            key = getpass.getpass("Supabase API Key: ").strip()
+            
+    pwd = ""
+    while not pwd:
+        pwd = getpass.getpass("Master Password (elige una para hoy): ").strip()
+        
+    print("[✓] Master Password guardada en RAM")
 
     set_settings(url, key, pwd)
-    print("Iniciando servidor local de MyPass en http://127.0.0.1:8000...")
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, log_level="info")
-
+    print("\nIniciando servidor local de MyPass en http://127.0.0.1:8000...")
+    uvicorn.run(app.app, host="127.0.0.1", port=8000, log_level="info")
 
 if __name__ == "__main__":
     start_app()

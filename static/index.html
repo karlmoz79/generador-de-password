@@ -37,6 +37,10 @@
             background: rgba(30, 41, 59, 0.75);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
+      @keyframes scaleIn {
+        from { transform: scale(0.9); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
     </style>
   </head>
   <body
@@ -264,6 +268,7 @@
               Estadísticas de Seguridad
             </h2>
             <span
+              id="action-badge"
               class="text-xs font-bold text-orange-500 bg-orange-100 dark:bg-orange-500/20 px-3 py-1 rounded-full uppercase tracking-wider"
               >Acción Requerida</span
             >
@@ -552,6 +557,37 @@
                 <button id="export-csv" class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white py-4 rounded-2xl font-bold transition-all active:scale-[0.98] outline-none flex items-center justify-center gap-3">
                     <i class="ph ph-file-csv text-2xl"></i>
                     Exportar como CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overwrite Confirmation Modal (Hidden by default) -->
+    <div id="overwrite-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm rounded-[2rem] p-8 flex flex-col shadow-2xl relative animate-[scaleIn_0.2s_ease-out]">
+            <div class="flex flex-col items-center text-center mb-6">
+                <div class="w-16 h-16 bg-orange-50 dark:bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-500 mb-4">
+                    <i class="ph-fill ph-warning-circle text-4xl"></i>
+                </div>
+                <h2 class="text-xl font-bold dark:text-white">Contraseña Existente</h2>
+                <p id="overwrite-msg" class="text-slate-500 dark:text-slate-400 text-sm mt-2 leading-relaxed">
+                    Ya existe una contraseña guardada para este sitio y correo.
+                </p>
+            </div>
+            <div class="space-y-3">
+                <button
+                    id="overwrite-confirm"
+                    class="w-full bg-orange-500 hover:bg-orange-600 text-white py-3.5 rounded-2xl font-bold transition-all active:scale-[0.98] outline-none flex items-center justify-center gap-2 cursor-pointer"
+                >
+                    <i class="ph ph-arrows-clockwise text-lg"></i>
+                    Reemplazar Contraseña
+                </button>
+                <button
+                    id="overwrite-cancel"
+                    class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 py-3.5 rounded-2xl font-bold transition-all active:scale-[0.98] outline-none flex items-center justify-center gap-2 cursor-pointer"
+                >
+                    <i class="ph ph-x text-lg"></i>
+                    Cancelar
                 </button>
             </div>
         </div>

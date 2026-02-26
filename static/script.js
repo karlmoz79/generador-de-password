@@ -77,8 +77,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Load Stats
     async function loadStats() {
+        if (!masterPasswordToken) return;
         try {
-            const res = await fetch("/api/stats");
+            const res = await fetch("/api/stats", {
+                headers: { "Authorization": masterPasswordToken }
+            });
             const data = await res.json();
             
             // Update counts
@@ -96,8 +99,32 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("reused-bar").style.width = `${reusedPct}%`;
             document.getElementById("breached-bar").style.width = `${breachedPct}%`;
             
-            // Update Circle
-            document.getElementById("score-circle").setAttribute("stroke-dasharray", `${data.score}, 100`);
+            // Update Circle color based on score
+            const circle = document.getElementById("score-circle");
+            circle.setAttribute("stroke-dasharray", `${data.score}, 100`);
+            circle.classList.remove("text-emerald-500", "text-orange-500", "text-red-500");
+            if (data.score >= 80) {
+                circle.classList.add("text-emerald-500");
+            } else if (data.score >= 50) {
+                circle.classList.add("text-orange-500");
+            } else {
+                circle.classList.add("text-red-500");
+            }
+
+            // Update action badge
+            const badge = document.getElementById("action-badge");
+            if (badge) {
+                if (data.reused > 0 || data.breached > 0) {
+                    badge.textContent = "Acción Requerida";
+                    badge.className = "text-xs font-bold text-red-500 bg-red-100 dark:bg-red-500/20 px-3 py-1 rounded-full uppercase tracking-wider";
+                } else if (data.score < 80) {
+                    badge.textContent = "Mejorable";
+                    badge.className = "text-xs font-bold text-orange-500 bg-orange-100 dark:bg-orange-500/20 px-3 py-1 rounded-full uppercase tracking-wider";
+                } else {
+                    badge.textContent = "Excelente";
+                    badge.className = "text-xs font-bold text-emerald-500 bg-emerald-100 dark:bg-emerald-500/20 px-3 py-1 rounded-full uppercase tracking-wider";
+                }
+            }
             
         } catch (error) {
             console.error("Error loading stats:", error);
@@ -120,8 +147,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function loadEvents() {
+        if (!masterPasswordToken) return;
         try {
-            const res = await fetch("/api/events");
+            const res = await fetch("/api/events", {
+                headers: { "Authorization": masterPasswordToken }
+            });
             const events = await res.json();
             
             eventsContainer.innerHTML = '';
@@ -194,8 +224,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let masterPasswordToken = "";
 
+    let pendingAction = null;
+
     // Vault Toggle
     vaultToggleBtn.addEventListener("click", () => {
+        pendingAction = async () => {
+            const success = await loadVault();
+            if (success) {
+                vaultOverlay.classList.remove("hidden");
+            }
+        };
         authOverlay.classList.remove("hidden");
         adminPasswordInput.value = "";
         authError.classList.add("hidden");
@@ -210,17 +248,19 @@ document.addEventListener("DOMContentLoaded", () => {
     authForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const pwd = adminPasswordInput.value;
+        const tempToken = `Bearer ${pwd}`;
         
         try {
-            // Store token
-            masterPasswordToken = `Bearer ${pwd}`;
+            // Verify token first
+            const res = await fetch("/api/passwords", { headers: { "Authorization": tempToken } });
             
-            // Try to load vault
-            const success = await loadVault();
-            
-            if (success) {
+            if (res.ok) {
+                masterPasswordToken = tempToken;
                 authOverlay.classList.add("hidden");
-                vaultOverlay.classList.remove("hidden");
+                if (pendingAction) {
+                    await pendingAction();
+                    pendingAction = null;
+                }
             } else {
                 authError.classList.remove("hidden");
                 adminPasswordInput.value = "";
@@ -241,6 +281,8 @@ document.addEventListener("DOMContentLoaded", () => {
     checkAllBreachesBtn.addEventListener("click", async () => {
         if (!masterPasswordToken) return;
         try {
+            checkAllBreachesBtn.disabled = true;
+            checkAllBreachesBtn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Verificando...';
             const res = await fetch("/api/check-all-breaches", {
                 headers: { "Authorization": masterPasswordToken }
             });
@@ -257,9 +299,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 } else {
                     alert("✅ Ninguna contraseña ha sido encontrada en filtraciones conocidas.");
                 }
+                refreshDashboard();
             }
         } catch (error) {
             showMessage("Error al verificar las contraseñas.", "error");
+        } finally {
+            checkAllBreachesBtn.disabled = false;
+            checkAllBreachesBtn.innerHTML = '<i class="ph ph-shield-warning"></i> Verificar Todas';
         }
     });
 
@@ -363,6 +409,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             } else {
                                 alert(`✅ La contraseña de ${p.website} no ha sido encontrada en filtraciones conocidas.`);
                             }
+                            refreshDashboard();
                         }
                     } catch (error) {
                         showMessage("Error al verificar la contraseña.", "error");
@@ -634,11 +681,14 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        try {
-            const res = await fetch(`/api/password/${encodeURIComponent(website)}`);
-            const data = await res.json();
-            
-            if (res.ok) {
+        const performSearch = async () => {
+            try {
+                const res = await fetch(`/api/password/${encodeURIComponent(website)}`, {
+                    headers: { "Authorization": masterPasswordToken }
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
                 emailInput.value = data.email;
                 passwordInput.value = data.password;
                 passwordInput.type = "text"; // Reveal password temporarily
@@ -647,12 +697,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     togglePasswordIcon.classList.add("ph-eye-slash");
                 }
                 
-                // Copy to clipboard
-                await navigator.clipboard.writeText(data.password);
-                showMessage(`Credenciales encontradas para ${website}. ¡Contraseña copiada al portapapeles!`, "success");
+                // Copy to clipboard is removed for security
+                showMessage(`Credenciales encontradas para ${website}.`, "success");
                 
-                // Re-hide password after 5 seconds
+                // Clear and re-hide password after 5 seconds
                 setTimeout(() => {
+                    websiteInput.value = "";
+                    emailInput.value = "";
+                    passwordInput.value = "";
                     passwordInput.type = "password";
                     if (togglePasswordIcon) {
                         togglePasswordIcon.classList.remove("ph-eye-slash");
@@ -662,12 +714,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 refreshDashboard(); // Refresh to log search event
             } else {
-                showMessage(data.detail || "No existen credenciales para este sitio.", "error");
+                if (res.status === 401) {
+                    masterPasswordToken = ""; // Clear invalid token
+                    showMessage("Contraseña maestra incorrecta", "error");
+                } else {
+                    showMessage(data.detail || "No existen credenciales para este sitio.", "error");
+                }
                 passwordInput.value = "";
             }
         } catch (error) {
             showMessage("Error connecting to server.", "error");
         }
+        };
+
+        // Solicitar SIEMPRE la clave maestra antes de buscar
+        pendingAction = performSearch;
+        authOverlay.classList.remove("hidden");
+        adminPasswordInput.value = "";
+        authError.classList.add("hidden");
+        adminPasswordInput.focus();
     });
 
     // Generate Password
@@ -695,8 +760,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Update strength indicator
             updateStrengthIndicator(data.password);
             
-            await navigator.clipboard.writeText(data.password);
-            showMessage("¡Contraseña generada y copiada al portapapeles!", "success");
+            showMessage("¡Contraseña generada!", "success");
             
             setTimeout(() => {
                 passwordInput.type = "password";
@@ -746,6 +810,30 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("length-value").textContent = e.target.value;
     });
 
+    // Overwrite Modal Elements
+    const overwriteModal = document.getElementById("overwrite-modal");
+    const overwriteMsg = document.getElementById("overwrite-msg");
+    const overwriteConfirmBtn = document.getElementById("overwrite-confirm");
+    const overwriteCancelBtn = document.getElementById("overwrite-cancel");
+
+    function showOverwriteModal(message) {
+        return new Promise((resolve) => {
+            overwriteMsg.textContent = message;
+            overwriteModal.classList.remove("hidden");
+
+            function onConfirm() { cleanup(); resolve(true); }
+            function onCancel() { cleanup(); resolve(false); }
+            function cleanup() {
+                overwriteConfirmBtn.removeEventListener("click", onConfirm);
+                overwriteCancelBtn.removeEventListener("click", onCancel);
+                overwriteModal.classList.add("hidden");
+            }
+
+            overwriteConfirmBtn.addEventListener("click", onConfirm);
+            overwriteCancelBtn.addEventListener("click", onCancel);
+        });
+    }
+
     // Add/Save Password
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -759,23 +847,62 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        try {
+        async function savePassword(force = false) {
+            if (!masterPasswordToken) {
+                // If there's no token, force the user to authenticate first
+                return new Response(null, { status: 401 });
+            }
             const res = await fetch("/api/password", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ website, email, password })
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": masterPasswordToken
+                },
+                body: JSON.stringify({ website, email, password, force })
             });
+            return res;
+        }
+
+        try {
+            let res = await savePassword(false);
+
+            if (res.status === 401) {
+                // Need to authenticate to save
+                pendingAction = async () => {
+                    const retryRes = await savePassword(false);
+                    if (retryRes.status === 409) {
+                        const retryData = await retryRes.json();
+                        const userConfirmed = await showOverwriteModal(retryData.detail);
+                        if (userConfirmed) {
+                            const finalRes = await savePassword(true);
+                            if (finalRes.ok) handleSaveSuccess(website);
+                        } else {
+                            showMessage("Operación cancelada.", "error");
+                        }
+                    } else if (retryRes.ok) {
+                        handleSaveSuccess(website);
+                    }
+                };
+                authOverlay.classList.remove("hidden");
+                adminPasswordInput.value = "";
+                authError.classList.add("hidden");
+                adminPasswordInput.focus();
+                return;
+            }
+
+            if (res.status === 409) {
+                const data = await res.json();
+                const userConfirmed = await showOverwriteModal(data.detail);
+                if (userConfirmed) {
+                    res = await savePassword(true);
+                } else {
+                    showMessage("Operación cancelada. La contraseña no fue reemplazada.", "error");
+                    return;
+                }
+            }
 
             if (res.ok) {
-                showMessage(`¡Credenciales para ${website} guardadas de forma segura!`, "success");
-                websiteInput.value = "";
-                passwordInput.value = "";
-                passwordInput.type = "password";
-                if (togglePasswordIcon) {
-                    togglePasswordIcon.classList.remove("ph-eye-slash");
-                    togglePasswordIcon.classList.add("ph-eye");
-                }
-                refreshDashboard(); // refresh stats and events
+                handleSaveSuccess(website);
             } else {
                 const data = await res.json();
                 showMessage(data.detail || "Error al guardar la contraseña.", "error");
@@ -784,4 +911,16 @@ document.addEventListener("DOMContentLoaded", () => {
             showMessage("Error al guardar la contraseña. El servidor podría estar inactivo.", "error");
         }
     });
+
+    function handleSaveSuccess(websiteName) {
+        showMessage(`¡Credenciales para ${websiteName} guardadas de forma segura!`, "success");
+        websiteInput.value = "";
+        passwordInput.value = "";
+        passwordInput.type = "password";
+        if (togglePasswordIcon) {
+            togglePasswordIcon.classList.remove("ph-eye-slash");
+            togglePasswordIcon.classList.add("ph-eye");
+        }
+        refreshDashboard();
+    }
 });
