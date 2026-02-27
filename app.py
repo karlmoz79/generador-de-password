@@ -23,15 +23,27 @@ from src.routers import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+import os
+import sys
+
+def get_base_path():
+    """Obtiene la ruta base, ya sea si se ejecuta como script o como binario de PyInstaller."""
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        return sys._MEIPASS
+    return os.path.dirname(os.path.abspath(__file__))
+
+base_path = get_base_path()
+static_dir = os.path.join(base_path, "static")
+
 app = FastAPI(title="MyPass", version="2.0.0")
 
 # ── Archivos estáticos ────────────────────────────────────────────
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
 @app.get("/")
 def read_root():
-    return FileResponse("static/index.html")
+    return FileResponse(os.path.join(static_dir, "index.html"))
 
 
 # ── Routers ───────────────────────────────────────────────────────

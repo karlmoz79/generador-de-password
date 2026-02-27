@@ -204,5 +204,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ── Initial Load ─────────────────────────────────────────
-    refreshDashboard();
+    if (!getToken()) {
+        requireAuth(() => refreshDashboard());
+    } else {
+        refreshDashboard();
+    }
 });
