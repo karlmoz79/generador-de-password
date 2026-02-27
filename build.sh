@@ -18,5 +18,15 @@ uv run pyinstaller --name MyPass \
     --hidden-import "uvicorn.protocols.websockets.auto" \
     --hidden-import "uvicorn.lifespan" \
     --hidden-import "uvicorn.lifespan.on" \
+    --hidden-import "src.routers.passwords" \
+    --hidden-import "src.routers.stats" \
+    --hidden-import "src.routers.generator" \
+    --hidden-import "src.routers.events" \
+    --hidden-import "src.routers.breach" \
+    --hidden-import "src.routers.import_export" \
+    --hidden-import "src.services.auth" \
+    --hidden-import "src.services.password_generator" \
+    --hidden-import "src.services.breach_checker" \
+    --hidden-import "src.services.stats" \
     main.py
 echo "✅ Compilación exitosa. Ejecutable en dist/MyPass"
