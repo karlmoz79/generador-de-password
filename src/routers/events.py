@@ -9,6 +9,5 @@ router = APIRouter(prefix="/api", tags=["events"])
 
 
 @router.get("/events")
-def get_events(authorization: str | None = Header(default=None)):
-    verify_auth(authorization)
+def get_events():
     return load_events()

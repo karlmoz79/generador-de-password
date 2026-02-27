@@ -1,5 +1,4 @@
 import os
-import getpass
 import uvicorn
 from dotenv import load_dotenv
 from src.config import set_settings
@@ -14,6 +13,7 @@ def start_app():
     
     env_url = os.getenv("SUPABASE_URL")
     env_key = os.getenv("SUPABASE_KEY")
+    env_pwd = os.getenv("MASTER_PASSWORD")
     
     url = env_url.strip() if env_url else ""
     if url:
@@ -27,13 +27,16 @@ def start_app():
         print("[✓] Supabase API Key cargada del .env")
     else:
         while not key:
-            key = getpass.getpass("Supabase API Key: ").strip()
-            
-    pwd = ""
-    while not pwd:
-        pwd = getpass.getpass("Master Password (elige una para hoy): ").strip()
-        
-    print("[✓] Master Password guardada en RAM")
+            key = input("Supabase API Key: ").strip()
+
+    pwd = env_pwd.strip() if env_pwd else ""
+    if pwd:
+        print("[✓] Master Password cargada del .env")
+    else:
+        import getpass
+        while not pwd:
+            pwd = getpass.getpass("Master Password (elige una para hoy): ").strip()
+        print("[✓] Master Password guardada en RAM")
 
     set_settings(url, key, pwd)
     print("\nIniciando servidor local de MyPass en http://127.0.0.1:8000...")

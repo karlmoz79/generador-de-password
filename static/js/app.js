@@ -157,38 +157,25 @@ document.addEventListener("DOMContentLoaded", () => {
             refreshDashboard();
         }
 
-        async function trySave(force = false) {
-            if (!getToken()) return { ok: false, status: 401, data: null };
-            return api.savePassword(website, email, password, force);
+        function resetPasswordField() {
+            passwordInput.value = "";
+            passwordInput.type = "password";
+            if (togglePasswordIcon) {
+                togglePasswordIcon.classList.remove("ph-eye-slash");
+                togglePasswordIcon.classList.add("ph-eye");
+            }
         }
 
         try {
-            let res = await trySave(false);
-
-            if (res.status === 401) {
-                requireAuth(async () => {
-                    const retryRes = await trySave(false);
-                    if (retryRes.status === 409) {
-                        const confirmed = await showOverwriteModal(retryRes.data.detail);
-                        if (confirmed) {
-                            const finalRes = await trySave(true);
-                            if (finalRes.ok) handleSaveSuccess();
-                        } else {
-                            showMessage("Operación cancelada.", "error");
-                        }
-                    } else if (retryRes.ok) {
-                        handleSaveSuccess();
-                    }
-                });
-                return;
-            }
+            let res = await api.savePassword(website, email, password, false);
 
             if (res.status === 409) {
                 const confirmed = await showOverwriteModal(res.data.detail);
                 if (confirmed) {
-                    res = await trySave(true);
+                    res = await api.savePassword(website, email, password, true);
                 } else {
                     showMessage("Operación cancelada. La contraseña no fue reemplazada.", "error");
+                    resetPasswordField();
                     return;
                 }
             }
@@ -204,9 +191,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ── Initial Load ─────────────────────────────────────────
-    if (!getToken()) {
-        requireAuth(() => refreshDashboard());
-    } else {
+    // Si ya tiene token en sessionStorage (F5/recarga), cargar directo.
+    // Si no, pedir Auth y luego cargar.
+    if (getToken()) {
         refreshDashboard();
+    } else {
+        requireAuth(() => refreshDashboard());
     }
 });

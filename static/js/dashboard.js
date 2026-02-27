@@ -7,7 +7,6 @@ import { getToken } from './auth.js';
 import { escapeHtml, timeAgo } from './ui.js';
 
 export async function loadStats() {
-    if (!getToken()) return;
     try {
         const data = await fetchStats();
 
@@ -52,7 +51,6 @@ export async function loadStats() {
 }
 
 export async function loadEvents() {
-    if (!getToken()) return;
     const eventsContainer = document.getElementById("events-container");
     try {
         const events = await fetchEvents();

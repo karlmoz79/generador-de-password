@@ -9,6 +9,5 @@ router = APIRouter(prefix="/api", tags=["stats"])
 
 
 @router.get("/stats")
-def get_stats(authorization: str | None = Header(default=None)):
-    verify_auth(authorization)
+def get_stats():
     return calculate_stats()
